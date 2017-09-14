@@ -3,6 +3,76 @@
   
     
     <entry>
+      <title><![CDATA[「Android 启动前台服务，华为、小米、三星、OPPO、VIVO的配合程度」]]></title>
+      <url>/2017/09/14/%E3%80%8CAndroid%20%E5%90%AF%E5%8A%A8%E5%89%8D%E5%8F%B0%E6%9C%8D%E5%8A%A1%EF%BC%8C%E5%8D%8E%E4%B8%BA%E3%80%81%E5%B0%8F%E7%B1%B3%E3%80%81%E4%B8%89%E6%98%9F%E3%80%81OPPO%E3%80%81VIVO%E7%9A%84%E9%85%8D%E5%90%88%E7%A8%8B%E5%BA%A6%E3%80%8D/</url>
+      <content type="html"><![CDATA[<h6 id="original-bad-mask-2017-09-09"><a href="#original-bad-mask-2017-09-09" class="headerlink" title="original bad-mask  2017-09-09"></a>original bad-mask  2017-09-09</h6><p>这两天接手了一个需求，就是尽量避免 App 被杀死，以保证推送的消息可以及时收到。在接手前，已经有同事做了各种调研，最后决定使用前台服务的方式以让用户对 App 正在运行的这种状态有一个明确的感知「这里说明下，有些 App 会尽量避免让用户明确感知到前台服务这种行为，也会启动前台服务，不过会利用 Android 系统的 bug，把这个前台服务再隐藏，这个方式在网上有很多介绍」。</p>
+<p>用startForeground(int id, Notification notification) 方式来启动前台服务，代码并不多，在 AndroidManifest.xml 中再注册一个服务，在 Application 或者 Acitivity 启动即可，至于不同启动方式的利弊自己去查询下，我这个主要是看代码写完后，各种主要机型的配合程度。</p>
+<p>让我吐槽一下，这个过程我的心情是这样的：懵『前台服务？启动方式？代码写好如何配合拉起推送的需求？』  — 好像懂了『都知道了，就差拿手机试一试了』 — 高兴『用自己的 华为手机尝试，success』— 失望 or 绝望 『自己的 VIVO、公司的 OPPO均失败，小米 success』— 美滋滋『看到 VIVO、OPPO 起来了前台服务，不过依然有难题… 』。</p>
+<p>前台服务是否正常显示最好的对比方式就是看在此手机上的高德地图以及音乐播放器是否可以正常启动前台服务。</p>
+<p>来段启动前台服务代码：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">&lt;!--私信的前台服务--&gt;</div><div class="line">&lt;service android:name=<span class="string">".push.MsgService"</span>/&gt;</div></pre></td></tr></table></figure></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MsgService</span> <span class="keyword">extends</span> <span class="title">Service</span></span>&#123;</div><div class="line">    <span class="meta">@Override</span></div><div class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onCreate</span><span class="params">()</span> </span>&#123;</div><div class="line">        <span class="keyword">super</span>.onCreate();</div><div class="line">        Intent notificationIntent = <span class="keyword">new</span> Intent(<span class="keyword">this</span>, MsgChatHistoryActivity.class);</div><div class="line">        PendingIntent pendingIntent = PendingIntent.getActivity(<span class="keyword">this</span>,<span class="number">0</span>,notificationIntent,<span class="number">0</span>);</div><div class="line">        Notification.Builder builder = <span class="keyword">new</span> Notification.Builder(<span class="keyword">this</span>.getApplicationContext());</div><div class="line">        builder.setContentTitle(<span class="string">"***服务"</span>);</div><div class="line">        builder.setContentText(<span class="string">"请勿关闭，***"</span>);</div><div class="line">        builder.setSmallIcon(R.drawable.gengmei_icon);</div><div class="line">        builder.setContentIntent(pendingIntent);</div><div class="line">        Notification notification = builder.getNotification();</div><div class="line">        startForeground(<span class="number">1</span>,notification);<span class="comment">//启动前台服务</span></div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="meta">@Override</span></div><div class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">onStartCommand</span><span class="params">(Intent intent, <span class="keyword">int</span> flags, <span class="keyword">int</span> startId)</span> </span>&#123;</div><div class="line">        <span class="comment">/**</span></div><div class="line">         * 当Service因为内存不足而被系统kill后，接下来未来的某个时间内，当系统内存足够可用的情况下，系统将会尝试重新创建此Service，</div><div class="line">         * 一旦创建成功后将回调onStartCommand(...)方法，但其中的Intent将是null，pendingintent除外</div><div class="line">         * 返回值可以确定下，用哪个符合要求</div><div class="line">         */</div><div class="line">        <span class="keyword">return</span> START_STICKY;</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="meta">@Nullable</span></div><div class="line">    <span class="meta">@Override</span></div><div class="line">    <span class="function"><span class="keyword">public</span> IBinder <span class="title">onBind</span><span class="params">(Intent intent)</span> </span>&#123;</div><div class="line">        <span class="keyword">return</span> <span class="keyword">null</span>;</div><div class="line">    &#125;</div><div class="line"></div><div class="line">    <span class="meta">@Override</span></div><div class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onDestroy</span><span class="params">()</span> </span>&#123;</div><div class="line">        stopForeground(<span class="keyword">true</span>);<span class="comment">//停止前台服务</span></div><div class="line">        <span class="keyword">super</span>.onDestroy();</div><div class="line">    &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line"><span class="comment">//启动服务</span></div><div class="line"> startService(<span class="keyword">new</span> Intent(mContext,MsgService.class));</div></pre></td></tr></table></figure>
+<p>#####下面展示下这段代码在几种主流手机上的运行效果：</p>
+<p>######小米手机：<br>小米6、红米note 4X 6.0、小米5.1.1 可以启动前台服务，且不能撤销；「大概可以得出结论：小米手机可以正常启动前台服务，且均不能撤销，除非自己去设置中单独对 App 进行设置，但是一般的用户不会有这种操作，可以先不用考虑」</p>
+<p>######三星手机：<br>三星手机 5.0.1 系统可以正常启动；</p>
+<p>######华为手机：<br>华为6.0「默认不会展开『拒绝』『允许』的选择框」、4.4.2「默认会展开『拒绝』『允许』的选择框」会有拒绝接受通知的情况，上两张图说明下；「拒绝后，除非用户手动去设置中对 App 单独设置，否则不能再次开启，高德也是这样的」<br>对比下小米，发现好喜欢小米，因为小米在通知界面中根本就没有「拒绝」「接受」的选择框，有效避免了用户的这种「拒绝」的行为…</p>
+<p><img src="http://upload-images.jianshu.io/upload_images/2644950-ce27d6e9370e2023.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/400" alt="默认没有展开「拒绝」「接手」的选择框，但是下滑可以显示.png"></p>
+<p><img src="http://upload-images.jianshu.io/upload_images/2644950-97deb550b675407c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/400" alt="默认展开，如果此时用户点击拒绝，那么开发者表示收到一万点伤害.png"></p>
+<p>######VIVO、OPPO手机：<br>vivo X9Plus 、vivo X9 不能启动前台服务；「音乐播放器、高德可以启动前台服务」</p>
+<p>OPPO A59s 5.1版本 、OPPO R9s  不能启动前台服务；「音乐播放器、高德地图均不能启动前台服务」</p>
+<p>这两种机型去网上查，Google 的结果简直就是让人想哭，要么不能准确定位问题，要么不能准确定位机型，更是让我查到这样的句子：vivo和oppo的手机上service基本无法常驻，死的一干二净明明白白，丝毫没有任何挣扎的痕迹，难道是我查的姿势不对？「不过确实没有做过单独的某个机型的适配，不知道查某种机型的正确姿势，待我找到后，再写一篇博客，哈哈…」</p>
+<p>查了半天无果，OPPO 放到一边不谈，但是 VIVO 中 高德确实启动了前台服务，我开始倒腾看手机到底有没有相关的设置，难道真的像网上说的OPPO等手机从根本上就拒绝了前台服务这种行为？姑娘并不想相信这个事实…</p>
+<p> 在 VIVO 中，高德安装后默认启动通知服务，不需要手动设置；但是，我目前的代码没能让 VIVO 手机默认启动  App  通知服务，手动设置后，可以正常启动前台服务，所以下一步的任务就是找到让 VIVO 手机默认启动 App 通知服务的正确姿势，高德做到了所以一定有办法…</p>
+<p> 在 OPPO 中，高德安装后默认没有启动  App  通知服务，需要手动设置；我目前的代码也没能让 OPPO 手机默认启动通知服务，手动设置后，倒是可以正常启动前台服务。目前来看已经打破了这个论断：OPPO等手机上从根本上就拒绝了前台服务这种行为。所以下一步的任务就是找到让OPPO 手机默认启动 App 通知服务的正确姿势，高德没做到所以有点怂，不过可以试一试…</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">在 VIVO X9Plus手机上手动设置的方式：</div><div class="line">Settings -- More settings -- Applications -- All -- 目标 App -- Notifications -- 打开 Allow notification</div></pre></td></tr></table></figure>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">在 OPPO R9s 手机上手动设置的方式：</div><div class="line">设置 -- 其他设置 -- 应用程序管理 -- 已安装 -- 目标 App --通知管理 -- 打开 「允许通知」</div></pre></td></tr></table></figure>
+<p>######再来一波链接：<br><a href="http://www.jianshu.com/p/5505390503fa" target="_blank" rel="external">前台服务的使用</a><br><a href="http://www.jianshu.com/p/1e49e93c3ec8" target="_blank" rel="external">Service那点事儿</a><br><a href="http://www.jianshu.com/p/06a1a434e057" target="_blank" rel="external">Android如何降低service被杀死概率</a><br><a href="https://stackoverflow.com/questions/6397754/android-implementing-startforeground-for-a-service" target="_blank" rel="external">Android 如何开启前台服务</a><br><a href="https://github.com/commonsguy/cw-omnibus/tree/master/Notifications/Foreground" target="_blank" rel="external">GitHub 上的 Demo</a></p>
+]]></content>
+      
+        <categories>
+            
+            <category> Android </category>
+            
+            <category> Notification </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Notification </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
+      <title><![CDATA[他们在争吵]]></title>
+      <url>/2017/09/14/%E4%BB%96%E4%BB%AC%E5%9C%A8%E4%BA%89%E5%90%B5/</url>
+      <content type="html"><![CDATA[<h6 id="original-bad-mask-2017-08-29"><a href="#original-bad-mask-2017-08-29" class="headerlink" title="original bad-mask  2017-08-29"></a>original bad-mask  2017-08-29</h6><p>我有缺陷，不过我也努力的在弥补。</p>
+<p>弥补的第一种方式就是读书。那个时候我总是天真的以为，我读的多了，总有一天我能对某件事情观点鲜明地侃侃而谈。直到现在，发现读的越多，越不想去在人面前「侃侃而谈」，因为以我的经历和修养，说出来的内容只不过是娱乐大众而已，最终发现，被娱乐的终究只是自己。我很欣赏能够随手一挥就是一段文字或者一个章节的人，当我尝试什么都不拿坐在电脑前，想去写一些什么的时候，我发现，好几本书中零零碎碎的观点在我的脑海中交织，他们争执着要蹦到我的电脑屏幕上，而我却不知道怎么按下手中的键盘，我尝试不去干扰他们的争执，而是静心等待，等待哪个可以胜出然后自己出现在屏幕上的一刻，却突然觉得自己像个傻子，难不成观点还会自己打字到屏幕上吗？</p>
+<p>弥补的第二种方式就是学习、加班。在认为自己还精力充沛的时候，我每天都尽量把自己的时间填满，不知道你们会不会觉得可笑，我会规定自己从 A 时间段到 B 时间段的事情，从 B 时间段到 C 时间段的事情，等到深夜，看着自己完成的任务列表，又对着镜子看看自己的眼睛，告诉自己「力尹，加油，你不累你不累你不累，很开心很开心很开心」。在不想受约束的时候，我会想放纵，开始以为自己能从放纵中找到快乐，后来发现那只是以为。因为事后我总会不自觉的对自己的这段时间花费打分，基本都是分数很低，悔过的程度是他人无法体会的，所以我又默默告诫「力尹，你这样做不对，不该这样」。</p>
+<p>就这样，时间久了，确实可以进步的比一些人快些，同时也会被自己的强计划性而压迫。当一些不在计划内的事情发生的时候，脑中「强计划性」与「非计划内的事情」会相互排斥，对于「非计划内的事情」越是在意，「强计划性」的大脑越是批评你。很多情况下，你有能力去平静自己的内心，但是这次不行。因为他是「爱情」。</p>
+<p>什么时候开始？我不知道。什么时候确定？我不知道。为什么？我不知道。后来，他说他有女朋友，我不开心，我尝试交男朋友不刻意理他，嗯，两个月不到，我交了 3 个男朋友，在过程中我不断的劝自己放弃他，嗯，我没有做到。最终结果是什么？我更喜欢他了。我悄悄的关注，悄悄的寻找他世界里我的影子，可是我越来越不自信，因为我找不到。努力维护的自尊不准我做的更多。「强计划性」的大脑批评我「不务正业」，内心却也找不到答案，我很焦灼，我真的要放弃了。大脑也要求我放弃他，作为惩罚，我决定放弃我自认为的「爱情」。</p>
+<p>可能是幸运，我决定放弃的时候，他来了。我觉得他好像真的用他所有能想到的方式来爱我。我也很努力的探寻到他的内心，很努力的思索他的语言和文字。我就像一个天真的孩子，一脚出去是阳光，一脚出去是雨天，而控制的阀门的人却是他不是我，我安慰自己要磨合，我还要找到自己。可是他同时是「非计划内的事情」，这段时间「强计划性」的大脑总来控制我，因为大脑认为我永远不会真正爱上一个人。就这样，我有了两个任务：他和我要磨合；「非计划内的事情」与「强计划性」的大脑要磨合。其实我知道，这是无法逃避的事情。</p>
+<p>也许，我会找到解决的方式。</p>
+<p>佛洛伊德说：生命中唯一重要的事情是爱情和工作。我们可以换一个稍微商业化的书，在「麦肯锡方法」这本管理学书籍中，最后写着：当一切都失去的时候，家里要有一个人在等你。那样，至少你可以回家去洗衣服。</p>
+<p>他是爱情，我需要工作。迷失于爱情，我会难过；迷失于工作，我会伤心。我不能伤害任何一个，就像我不能去伤害自己。</p>
+<p>我应该可以找到解决方式。调节这段争吵。我能不能调节好，我不知道。如果，抬头，发现是他，我会很开心。</p>
+<p>早就写好，今天还是觉得要放在简书里。</p>
+<p><img src="http://upload-images.jianshu.io/upload_images/2644950-0a486a2b4bead0b1.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/200" alt="image.png"></p>
+]]></content>
+      
+        <categories>
+            
+            <category> 内心独白 </category>
+            
+        </categories>
+        
+        
+    </entry>
+    
+    <entry>
       <title><![CDATA[读「自在独行」]]></title>
       <url>/2017/08/29/%E8%AF%BB%E3%80%8C%E8%87%AA%E5%9C%A8%E7%8B%AC%E8%A1%8C%E3%80%8D/</url>
       <content type="html"><![CDATA[<h6 id="original-bad-mask-2017-08-19"><a href="#original-bad-mask-2017-08-19" class="headerlink" title="original bad-mask  2017-08-19"></a>original bad-mask  2017-08-19</h6><p>记于读到作者夸赞自己妈妈时<br>那日，我和妈妈说有男朋友了，之前就和我妈妈提过他，不过那时觉得他该不会喜欢我，所以没有细说，只说了他是河南的。所以，后来告诉妈妈他成为了我的男朋友，妈妈许是很害怕，害怕失去我「毕竟那个地方对她一个母亲来说太远了」，愣了一会，之后直说，我相信你的判断力。<br>爸爸也没有问太多，只是说，你好不容易遇上你喜欢的人，要好好珍惜。<br>被爸爸妈妈对我的信任感到震惊，也许只是曾经讨论过所谓的恋爱观被他们接受了，也许他们真的爱我爱到愿意牺牲自己的女儿以换取我梦想的幸福。</p>
