@@ -3,6 +3,40 @@
   
     
     <entry>
+      <title><![CDATA[Android  Developer 的正确姿势之获得手机当前界面的 Activity 的名称]]></title>
+      <url>/2017/09/17/Android%20%20Developer%20%E7%9A%84%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF%E4%B9%8B%E8%8E%B7%E5%BE%97%E6%89%8B%E6%9C%BA%E5%BD%93%E5%89%8D%E7%95%8C%E9%9D%A2%E7%9A%84%20Activity%20%E7%9A%84%E5%90%8D%E7%A7%B0/</url>
+      <content type="html"><![CDATA[<h6 id="original-bad-mask-2017-09-16"><a href="#original-bad-mask-2017-09-16" class="headerlink" title="original bad-mask  2017-09-16"></a>original bad-mask  2017-09-16</h6><p>前文：<br>写这篇文章的初衷其实是这样的，最近想在用户启动 APP 时，引导用户进入系统的设置界面，于是我在网上看到了这段代码：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line">Intent intent = <span class="keyword">new</span> Intent();</div><div class="line">intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);</div><div class="line"><span class="keyword">if</span>(Build.VERSION.SDK_INT &gt;= <span class="number">9</span>)&#123;</div><div class="line">     intent.setAction(<span class="string">"android.settings.APPLICATION_DETAILS_SETTINGS"</span>);</div><div class="line">     intent.setData(Uri.fromParts(<span class="string">"package"</span>, mContext.getPackageName(), <span class="keyword">null</span>));</div><div class="line">&#125; <span class="keyword">else</span> <span class="keyword">if</span>(Build.VERSION.SDK_INT &lt;= <span class="number">8</span>)&#123;</div><div class="line">     intent.setAction(Intent.ACTION_VIEW);</div><div class="line">     intent.setClassName(<span class="string">"com.android.settings"</span>,<span class="string">"com.android.settings.InstalledAppDetails"</span>);</div><div class="line">     intent.putExtra(<span class="string">"com.android.settings.ApplicationPkgName"</span>, mContext.getPackageName());</div><div class="line">&#125;</div><div class="line">startActivity(intent);</div></pre></td></tr></table></figure></p>
+<p><img src="http://upload-images.jianshu.io/upload_images/2644950-7d9b441aac350e0e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/200" alt="设置界面，这里以「微信」为例.png"></p>
+<p>我很好奇为什么会在「intent.setClassName(“com.android.settings”,”com.android.settings.InstalledAppDetails”);」这段代码中这么写？同时又受到<a href="http://blog.csdn.net/perarther/article/details/54025042" target="_blank" rel="external">这篇文章</a>的启发，就想玩玩「adb shell dumpsys」命令，毕竟代码的一大禁忌就是「功能实现了，但是写的不明不白」～</p>
+<p>#####好了，正文来了</p>
+<p> 注：下面所有的命令都需要在数据线连接手机的情况下进行，检测是否连接成功的最好方法就是看 Android Studio 的 「Connected Devices」是否正常显示了～</p>
+<p>######捕捉当前的 activity 「即，当前通过 USB 连接电脑的手机的界面上显示『onResume』的 Activity 的信息」:<br>在命令行窗口输入如下内容：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">adb shell dumpsys activity top</div></pre></td></tr></table></figure></p>
+<p>输出：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div></pre></td><td class="code"><pre><div class="line">TASK null id=488</div><div class="line">  ACTIVITY com.android.settings/.applications.InstalledAppDetails 955e010 pid=13576</div><div class="line">    Local Activity d7e4b34 State:</div><div class="line">      mResumed=false mStopped=true mFinished=false</div><div class="line">      mChangingConfigurations=false</div><div class="line">      mCurrentConfig=&#123;1.0 460mcc2mnc en_US ldltr sw360dp w360dp h616dp 480dpi nrml long port finger -keyb/v/h -nav/h s.13 themeId=0, affectGlobal:true&#125;</div><div class="line">      mLoadersStarted=true</div><div class="line">      Active Fragments in 517189:</div><div class="line">        #0: InstalledAppDetails&#123;c3b458e #0 id=0x7f120256&#125;</div><div class="line">        「省略一堆代码」</div><div class="line">    ViewRoot:</div><div class="line">      mAdded=true mRemoved=false</div><div class="line">      mConsumeBatchedInputScheduled=false</div><div class="line">  「省略一些代码」</div><div class="line">    View Hierarchy:</div><div class="line">      com.android.internal.policy.PhoneWindow$DecorView&#123;fee7866 V.E...... R....... 0,0-1080,1920&#125;</div><div class="line">「省略大部分代码，这部分代码的主要说明内容当前的 Activity 的 View 的层级关系」</div><div class="line">    Looper (main, tid 1) &#123;6faf70a&#125;</div><div class="line">      (Total messages: 0, polling=false, quitting=false)</div></pre></td></tr></table></figure></p>
+<p>其实最想知道的内容已经知道了<br>「 ACTIVITY com.android.settings/.applications.InstalledAppDetails」</p>
+<p>写道这里其实应该结束了，但是你没有奇怪的地方吗？为毛「android.settings.APPLICATION_DETAILS_SETTINGS」这样写也可以？<br>哈哈，其实查看<a href="https://developer.android.com/reference/android/provider/Settings.html" target="_blank" rel="external">官方</a>可以看到如下说法：<br><img src="http://upload-images.jianshu.io/upload_images/2644950-8db38e2d4d112667.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/400" alt="官方网站截图.png"><br>再查看 android 的源码，看到了如下解释：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS =</div><div class="line">           <span class="string">"android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS"</span>;</div></pre></td></tr></table></figure></p>
+<p>哈哈，好像没有啥需要奇怪的了～</p>
+<p>写到这里，其实真的应该结束了，不过却突然对 「adb shell dumpsys」命令有了兴趣，其实这篇文章也只是对 「adb shell dumpsys」命令有了一个引子的作用，下篇文章继续～～～</p>
+<p>参考文章：<br><a href="http://blog.iderzheng.com/debug-activity-task-stack-with-adb-shell-dumpsys/" target="_blank" rel="external">使用adb shell dumpsys检测Android的Activity任务栈</a></p>
+]]></content>
+      
+        <categories>
+            
+            <category> Android </category>
+            
+            <category> adb shell dumpsys </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Android </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
       <title><![CDATA[读「象与骑象人」]]></title>
       <url>/2017/09/16/%E8%AF%BB%E3%80%8C%E8%B1%A1%E4%B8%8E%E9%AA%91%E8%B1%A1%E4%BA%BA%E3%80%8D/</url>
       <content type="html"><![CDATA[<h6 id="original-bad-mask-2017-09-16"><a href="#original-bad-mask-2017-09-16" class="headerlink" title="original bad-mask  2017-09-16"></a>original bad-mask  2017-09-16</h6><p>这是一本教人去找到幸福的书，如果这样子表述不完全正确，那么说这本书的大部分篇幅都是在教会我们去寻觅幸福。弗洛伊德曾说「生命中唯一重要的事情是爱情和工作」，其实这句话出现在这本大致可以称为寻找幸福的心理学书中并不奇怪，但是认同这个观点的并不是只有心理学家，在曾经读到过的一本商业书籍 – 麦肯锡方法，作者最后写道「当一切都失去的时候，家里要有一个人在等你。那样，至少你可以回家去洗衣服」。以前就特意背过这句话，现在读完这本书，好像确实是这样。生命中唯一重要的事情是爱情和工作。</p>
@@ -267,42 +301,6 @@
     </entry>
     
     <entry>
-      <title><![CDATA[读「行走在爱与恨之间」]]></title>
-      <url>/2017/06/23/%E8%AF%BB%E3%80%8C%E8%A1%8C%E8%B5%B0%E5%9C%A8%E7%88%B1%E4%B8%8E%E6%81%A8%E4%B9%8B%E9%97%B4%E3%80%8D/</url>
-      <content type="html"><![CDATA[<h6 id="original-bad-mask-2017-06-18"><a href="#original-bad-mask-2017-06-18" class="headerlink" title="original bad-mask  2017-06-18"></a>original bad-mask  2017-06-18</h6><p>其实这种书，从名字来看，不应该在我的读书名单里，我也不知道为什么买了，今天收拾好后，找书来读，想来自己最近各方面表现略差，就选中这本书，以在生活上提醒下自己，后来发现自己不免太肤浅了些，因为这本书是去让我了解一个国家 – 日本，而且若以作者的角度来读这本书，真的有一种感觉如作者所写的那样 – 放纵情感，理智不会答应；而一位理智，公众的情感又如何面对？所以，对这本书，分寸的拿捏成了最富挑战性的工作，像是一次赌博，容不得分心。</p>
-<p>插一句题外话，分寸的拿捏，大概就是情商吧。从肤浅的角度来说，这个因素影响了周围人对你的喜爱与讨厌的程度。毕竟，我们要学会做人。</p>
-<p>我没有去过日本，甚至没有在网络上特意搜索过除战争题材外任何有关日本的消息，毕竟我没有能力「甚至没有想过，毕竟我太肤浅了」去分析一个怎样的日本，和中国建立怎样的外交，中日两国在未来又会有怎样的发展。在「日本初印象」一节中，第一次看到拍摄的日本的房屋的照片，真的就是「恍惚有种错觉，似乎并没有离开中国」。</p>
-<p>第二部分，不可避免谈到靖国神社，源于「荀子」中「故君子居必择乡，游必就士」这句而命名的「游就馆」，相必是靖国神社里不可不去的地方，馆内播放着录像片，「里面把日本对中国的侵略战争称为『支那事变』，把日本发动的太平洋战争称为『自卫战争』，历史在这里被完全扭曲着展示了出来」。读完第二节，其实真的体会到那个词 – 分寸的拿捏。因为作者需要用完全客观的角度附上图，并且说「这是日军在『二战』中国年使用过的战斗机」，不能说「这个肮脏、无耻的机器，在当时<em>**</em>的手中，掠夺了不知多少人的生命」。</p>
-<p>「靖国神社」，「和平博物馆」，「神风特工队和平会馆」，一个是完全是歪曲事实，一个搜索各种侵华的资料并且教育日本人，一个「愿意承认战争带来的苦难，但是却有意或无意地回避了当年日本军国主义发动战争的罪恶」。三种不同的面孔，来综合解读日本，了解他，然后了解自己。</p>
-<p>在「从垃圾处理看日本环保」一节中，其实我是很震惊的。在我孙子市「名字有些怪异」，垃圾分类已经实行了20多年，某些城市，垃圾分类可以细分到几十种，「家庭的作用」是重要一环，光瓶类就可以分为无色瓶、茶色瓶、其他瓶等等。而且这种繁琐的做法在经过一段时间的磨合后，已经被绝大多数日本人所接受，并在很大程度上改变着人们的生活态度。所以，我们呢？拿我举例「基本上不会乱丢垃圾的」，手里拿着冰淇淋的罐，走到垃圾桶前，根本不知道这属于「可回收」还是「不可回收」，呵呵。。。愧疚。</p>
-<p>其实，在本书中，并不知道为什么要加入「滨崎步：最艰难的一次采访」一节，许是为了丰富文章内服，对于日本文化覆盖更全，又或者是拉近这本书与年轻读者的距离。因为文中确实说了「从某种意义上来说，白岩松与滨崎步都觉得对方很陌生，采访一开始就不太活跃」，以及「让采访组等待了很长时间，滨崎步才从卧室里款款而出，跟所有采访的日本人的准时相比，她显得格外不同」。也不知道为什么「众曾根康弘：日本政坛的常青树」与「御手洗：日本财界总理」会在「滨崎步：最艰难的一次采访」一节之后，虽然知道 90% 是根据采访的时序来的，但还是觉得读的时候，跳跃有点大。</p>
-<p>读完后，确实让我想到了一些不着边际的问题，比如去日本，要去看看「靖国神社」，「和平博物馆」；在东京，逛不起「银座」的话，可以去逛「涩谷」和「里原宿」；去大阪松原市的佐渡岳部屋，看相扑训练；在鹿儿岛的指宿市体验「沙浴」；去东京的动漫节感受手冢治虫先生的「哆啦A梦」。</p>
-<p>读了四个小时，有些泛，还是谢谢作者。</p>
-<p>要写到结尾了，来几句鸡汤：<br>有时，认真的了解对方，也是了解自己并让自己变得更好的一条路。<br>别人是靠不住的，还是要靠自己。<br>历史告诉我们：没有外人可以打败我们，我们自己却可能败于自己搜下，想要战胜别人，首先要战胜自己。<br>有理有礼有节，保持冷静，继续前行。<br>打开，书与文字才有了最终的意义。<br>离开理性与客观，新闻将毫无力量。<br>渡边淳一说，爱的顶点是死亡。</p>
-<p>另外，今天是父亲节。老爹，我给你买了「我最喜欢」的酸奶，给你充了话费，给你发了红包「虽然不多，但是我 qiong ，哈哈」，而且，特意让你闺女在今天又提高了下文学修养，还写下了这篇「不算文章」的文章，怎样，有没有觉得你闺女又进步了一下？嗯，有我这么一个闺女真为你高兴。我知道，你不是最好的父亲，但是你给我你能给的所有。我也不是最好的闺女，但是我正在努力给你我能给的更好的未来。另外，真心感谢我能有一个很开明的妈妈。有一个能够让我更有责任感的姐姐。生活在这个家庭，很幸福。不过未来我的决定，还是希望得到你们的支持。我会与你们谈论更多我在北京的生活，告诉你们，你们还年轻，没有与我脱节，让沟通更顺畅些。还有啊，你闺女为了促进邻里和谐，把整个屋子的地板都擦了，到家我妈都不让我干，想让我多休息会啊，艾马，把自己都感动了。「竟然写了一个半小时。。。」</p>
-<p><img src="http://upload-images.jianshu.io/upload_images/2644950-e2d96b78f4208557.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/200" alt="行走在爱与恨之间"></p>
-]]></content>
-      
-        <categories>
-            
-            <category> 文艺路上的搬砖者 </category>
-            
-            <category> 了解日本 </category>
-            
-        </categories>
-        
-        
-        <tags>
-            
-            <tag> 行走在爱与恨之间 </tag>
-            
-            <tag> 看日本 </tag>
-            
-        </tags>
-        
-    </entry>
-    
-    <entry>
       <title><![CDATA[读「人类简史」]]></title>
       <url>/2017/06/23/%E8%AF%BB%E3%80%8C%E4%BA%BA%E7%B1%BB%E7%AE%80%E5%8F%B2%E3%80%8D/</url>
       <content type="html"><![CDATA[<h6 id="original-bad-mask-2017-06-11"><a href="#original-bad-mask-2017-06-11" class="headerlink" title="original bad-mask  2017-06-11"></a>original bad-mask  2017-06-11</h6><p>从我下决心多读书以提升我残缺的修养后，我就从开始「逼」我自己读书到现在的「习惯」读书了。慢慢地，到现在，其实二三百页的书，比如「活着」、「群山回首」、「灿烂千阳」、「围城」等等之类的书我应该只要三、四个小时或者四、五个小时就可以了，但是这本书我竟然用了一个月，而且没有读懂，真的是没有读懂，可是虽然没有读懂，也得写点什么，不然我连回忆的资料都没有，怎么和别人矫情我是一个文艺的人，哈哈，我就是开个玩笑。</p>
@@ -361,6 +359,42 @@
         <tags>
             
             <tag> 明朝那些事儿 </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
+      <title><![CDATA[读「行走在爱与恨之间」]]></title>
+      <url>/2017/06/23/%E8%AF%BB%E3%80%8C%E8%A1%8C%E8%B5%B0%E5%9C%A8%E7%88%B1%E4%B8%8E%E6%81%A8%E4%B9%8B%E9%97%B4%E3%80%8D/</url>
+      <content type="html"><![CDATA[<h6 id="original-bad-mask-2017-06-18"><a href="#original-bad-mask-2017-06-18" class="headerlink" title="original bad-mask  2017-06-18"></a>original bad-mask  2017-06-18</h6><p>其实这种书，从名字来看，不应该在我的读书名单里，我也不知道为什么买了，今天收拾好后，找书来读，想来自己最近各方面表现略差，就选中这本书，以在生活上提醒下自己，后来发现自己不免太肤浅了些，因为这本书是去让我了解一个国家 – 日本，而且若以作者的角度来读这本书，真的有一种感觉如作者所写的那样 – 放纵情感，理智不会答应；而一位理智，公众的情感又如何面对？所以，对这本书，分寸的拿捏成了最富挑战性的工作，像是一次赌博，容不得分心。</p>
+<p>插一句题外话，分寸的拿捏，大概就是情商吧。从肤浅的角度来说，这个因素影响了周围人对你的喜爱与讨厌的程度。毕竟，我们要学会做人。</p>
+<p>我没有去过日本，甚至没有在网络上特意搜索过除战争题材外任何有关日本的消息，毕竟我没有能力「甚至没有想过，毕竟我太肤浅了」去分析一个怎样的日本，和中国建立怎样的外交，中日两国在未来又会有怎样的发展。在「日本初印象」一节中，第一次看到拍摄的日本的房屋的照片，真的就是「恍惚有种错觉，似乎并没有离开中国」。</p>
+<p>第二部分，不可避免谈到靖国神社，源于「荀子」中「故君子居必择乡，游必就士」这句而命名的「游就馆」，相必是靖国神社里不可不去的地方，馆内播放着录像片，「里面把日本对中国的侵略战争称为『支那事变』，把日本发动的太平洋战争称为『自卫战争』，历史在这里被完全扭曲着展示了出来」。读完第二节，其实真的体会到那个词 – 分寸的拿捏。因为作者需要用完全客观的角度附上图，并且说「这是日军在『二战』中国年使用过的战斗机」，不能说「这个肮脏、无耻的机器，在当时<em>**</em>的手中，掠夺了不知多少人的生命」。</p>
+<p>「靖国神社」，「和平博物馆」，「神风特工队和平会馆」，一个是完全是歪曲事实，一个搜索各种侵华的资料并且教育日本人，一个「愿意承认战争带来的苦难，但是却有意或无意地回避了当年日本军国主义发动战争的罪恶」。三种不同的面孔，来综合解读日本，了解他，然后了解自己。</p>
+<p>在「从垃圾处理看日本环保」一节中，其实我是很震惊的。在我孙子市「名字有些怪异」，垃圾分类已经实行了20多年，某些城市，垃圾分类可以细分到几十种，「家庭的作用」是重要一环，光瓶类就可以分为无色瓶、茶色瓶、其他瓶等等。而且这种繁琐的做法在经过一段时间的磨合后，已经被绝大多数日本人所接受，并在很大程度上改变着人们的生活态度。所以，我们呢？拿我举例「基本上不会乱丢垃圾的」，手里拿着冰淇淋的罐，走到垃圾桶前，根本不知道这属于「可回收」还是「不可回收」，呵呵。。。愧疚。</p>
+<p>其实，在本书中，并不知道为什么要加入「滨崎步：最艰难的一次采访」一节，许是为了丰富文章内服，对于日本文化覆盖更全，又或者是拉近这本书与年轻读者的距离。因为文中确实说了「从某种意义上来说，白岩松与滨崎步都觉得对方很陌生，采访一开始就不太活跃」，以及「让采访组等待了很长时间，滨崎步才从卧室里款款而出，跟所有采访的日本人的准时相比，她显得格外不同」。也不知道为什么「众曾根康弘：日本政坛的常青树」与「御手洗：日本财界总理」会在「滨崎步：最艰难的一次采访」一节之后，虽然知道 90% 是根据采访的时序来的，但还是觉得读的时候，跳跃有点大。</p>
+<p>读完后，确实让我想到了一些不着边际的问题，比如去日本，要去看看「靖国神社」，「和平博物馆」；在东京，逛不起「银座」的话，可以去逛「涩谷」和「里原宿」；去大阪松原市的佐渡岳部屋，看相扑训练；在鹿儿岛的指宿市体验「沙浴」；去东京的动漫节感受手冢治虫先生的「哆啦A梦」。</p>
+<p>读了四个小时，有些泛，还是谢谢作者。</p>
+<p>要写到结尾了，来几句鸡汤：<br>有时，认真的了解对方，也是了解自己并让自己变得更好的一条路。<br>别人是靠不住的，还是要靠自己。<br>历史告诉我们：没有外人可以打败我们，我们自己却可能败于自己搜下，想要战胜别人，首先要战胜自己。<br>有理有礼有节，保持冷静，继续前行。<br>打开，书与文字才有了最终的意义。<br>离开理性与客观，新闻将毫无力量。<br>渡边淳一说，爱的顶点是死亡。</p>
+<p>另外，今天是父亲节。老爹，我给你买了「我最喜欢」的酸奶，给你充了话费，给你发了红包「虽然不多，但是我 qiong ，哈哈」，而且，特意让你闺女在今天又提高了下文学修养，还写下了这篇「不算文章」的文章，怎样，有没有觉得你闺女又进步了一下？嗯，有我这么一个闺女真为你高兴。我知道，你不是最好的父亲，但是你给我你能给的所有。我也不是最好的闺女，但是我正在努力给你我能给的更好的未来。另外，真心感谢我能有一个很开明的妈妈。有一个能够让我更有责任感的姐姐。生活在这个家庭，很幸福。不过未来我的决定，还是希望得到你们的支持。我会与你们谈论更多我在北京的生活，告诉你们，你们还年轻，没有与我脱节，让沟通更顺畅些。还有啊，你闺女为了促进邻里和谐，把整个屋子的地板都擦了，到家我妈都不让我干，想让我多休息会啊，艾马，把自己都感动了。「竟然写了一个半小时。。。」</p>
+<p><img src="http://upload-images.jianshu.io/upload_images/2644950-e2d96b78f4208557.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/200" alt="行走在爱与恨之间"></p>
+]]></content>
+      
+        <categories>
+            
+            <category> 文艺路上的搬砖者 </category>
+            
+            <category> 了解日本 </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> 行走在爱与恨之间 </tag>
+            
+            <tag> 看日本 </tag>
             
         </tags>
         
