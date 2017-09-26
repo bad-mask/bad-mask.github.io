@@ -3,6 +3,147 @@
   
     
     <entry>
+      <title><![CDATA[「java 反射」]]></title>
+      <url>/2017/09/26/%E3%80%8Cjava%20%E5%8F%8D%E5%B0%84%E3%80%8D/</url>
+      <content type="html"><![CDATA[<h6 id="original-bad-mask-2017-09-26"><a href="#original-bad-mask-2017-09-26" class="headerlink" title="original bad-mask  2017-09-26"></a>original bad-mask  2017-09-26</h6><p>其实原本这篇文章没啥必要，但是最近在 code review 的时候，发现[这篇文章]（<a href="http://www.jianshu.com/p/4ba461d3c670）中下面这段代码有些疑问，所以就去查了查" target="_blank" rel="external">http://www.jianshu.com/p/4ba461d3c670）中下面这段代码有些疑问，所以就去查了查</a><br><figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div></pre></td><td class="code"><pre><div class="line">  <span class="meta">@SuppressLint</span>(<span class="string">"NewApi"</span>)</div><div class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">isNotificationEnabled</span><span class="params">(Context context)</span> </span>&#123;</div><div class="line">    AppOpsManager appOpsManager = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);</div><div class="line">    ApplicationInfo applicationInfo = context.getApplicationInfo();</div><div class="line">    String pkg = context.getApplicationContext().getPackageName();</div><div class="line">    <span class="keyword">int</span> uid = applicationInfo.uid;</div><div class="line">    Class appOpsClass;</div><div class="line">    <span class="keyword">try</span> &#123;</div><div class="line">        appOpsClass = Class.forName(AppOpsManager.class.getName());</div><div class="line">        Method checkOpNoThrowMethod = appOpsClass.getMethod(<span class="string">"checkOpNoThrow"</span>, Integer.TYPE, Integer.TYPE, String.class);</div><div class="line">        Field opPostNotificationValue = appOpsClass.getDeclaredField(<span class="string">"OP_POST_NOTIFICATION"</span>);</div><div class="line">        <span class="keyword">int</span> value = (Integer) opPostNotificationValue.get(Integer.class);</div><div class="line">        <span class="keyword">return</span> ((Integer) checkOpNoThrowMethod.invoke(appOpsManager, value, uid, pkg) == AppOpsManager.MODE_ALLOWED);</div><div class="line">    &#125; <span class="keyword">catch</span> (ClassNotFoundException e) &#123;</div><div class="line">        e.printStackTrace();</div><div class="line">    &#125; <span class="keyword">catch</span> (NoSuchMethodException e) &#123;</div><div class="line">        e.printStackTrace();</div><div class="line">    &#125; <span class="keyword">catch</span> (NoSuchFieldException e) &#123;</div><div class="line">        e.printStackTrace();</div><div class="line">    &#125; <span class="keyword">catch</span> (InvocationTargetException e) &#123;</div><div class="line">        e.printStackTrace();</div><div class="line">    &#125; <span class="keyword">catch</span> (IllegalAccessException e) &#123;</div><div class="line">        e.printStackTrace();</div><div class="line">    &#125;</div><div class="line">    <span class="keyword">return</span> <span class="keyword">false</span>;</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<p>很明显，这段代码中运用了反射，可是在AppOpsManager 类中的 checkOpNoThrow 方法代码是这样的<br><figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line"><span class="comment">/**</span></div><div class="line"> * Like &#123;<span class="doctag">@link</span> #checkOp&#125; but instead of throwing a &#123;<span class="doctag">@link</span> SecurityException&#125; it</div><div class="line"> * returns &#123;<span class="doctag">@link</span> #MODE_ERRORED&#125;.</div><div class="line"> * <span class="doctag">@hide</span></div><div class="line"> */</div><div class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">checkOpNoThrow</span><span class="params">(<span class="keyword">int</span> op, <span class="keyword">int</span> uid, String packageName)</span> </span>&#123;</div><div class="line">    <span class="keyword">try</span> &#123;</div><div class="line">        <span class="keyword">return</span> mService.checkOperation(op, uid, packageName);</div><div class="line">    &#125; <span class="keyword">catch</span> (RemoteException e) &#123;</div><div class="line">    &#125;</div><div class="line">    <span class="keyword">return</span> MODE_ERRORED;</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<p>方法明明是 public ，自己还愚蠢的写了这么一段代码，看看能不能代替反射的那段代码：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">appOpsManager.checkOpNoThrow(<span class="string">"OP_POST_NOTIFICATION"</span>,uid,pkg)== AppOpsManager.MODE_ALLOWED)</div></pre></td></tr></table></figure>
+<p>运行，直接crash，报错如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">java.lang.IllegalArgumentException: Unknown operation string: OP_POST_NOTIFICATION</div></pre></td></tr></table></figure>
+<p>仔细看了一下，AppOpsManager 类中的 checkOpNoThrow 方法，带有 hide 标签，去一探究竟～</p>
+<p>######「@hide」标签<br>类或 API 是否开放，是通过 doc 注释的「@hide」标签来控制的。「@hide」标签表示不对外公开 api，但是系统内部是可以使用该注释标记的接口的。<br>「@hide」标签注释后的类或者 API 在编译时不对外开放，但是在运行的时候这些类和 API 都是可以访问的。<br>解决方案：一种是使用反射的方法得到隐藏的 API；一种是使用源码编译时生成的全编译的 jar 包。</p>
+<h6 id="java-反射的总结"><a href="#java-反射的总结" class="headerlink" title="java 反射的总结"></a>java 反射的总结</h6><p>java 反射机制是在运行状态中，对于任意一个类，都能够知道这个类的所有属性和方法；对于任意一个对象，都能够调用它的任意一个方法；这种动态获取以及动态调用对象的方法的功能称为 Java 的反射机制。</p>
+<p>缺点：性能是一个问题，反射相当于一系列解释操作，通知 jvm 要做的事情，性能比直接的 java 代码要慢很多。</p>
+<p>######关于反射的参考链接：<br><a href="http://www.cnblogs.com/rollenholt/archive/2011/09/02/2163758.html" target="_blank" rel="external">http://www.cnblogs.com/rollenholt/archive/2011/09/02/2163758.html</a><br><a href="http://www.cnblogs.com/whoislcj/p/6038511.html" target="_blank" rel="external">http://www.cnblogs.com/whoislcj/p/6038511.html</a><br><a href="https://segmentfault.com/a/1190000010162647" target="_blank" rel="external">https://segmentfault.com/a/1190000010162647</a></p>
+<p>######关于 hide 标签参考的链接：<br><a href="https://stackoverflow.com/questions/17035271/what-does-hide-mean-in-the-android-source-code" target="_blank" rel="external">https://stackoverflow.com/questions/17035271/what-does-hide-mean-in-the-android-source-code</a><br><a href="http://blog.csdn.net/ouyang_peng/article/details/17288253" target="_blank" rel="external">http://blog.csdn.net/ouyang_peng/article/details/17288253</a><br><a href="http://blog.sina.com.cn/s/blog_5da93c8f0101e1yj.html" target="_blank" rel="external">http://blog.sina.com.cn/s/blog_5da93c8f0101e1yj.html</a></p>
+]]></content>
+      
+        <categories>
+            
+            <category> Java </category>
+            
+            <category> 反射 </category>
+            
+        </categories>
+        
+        
+        <tags>
+            
+            <tag> Java </tag>
+            
+            <tag> 反射 </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
+      <title></title>
+      <url>/2017/09/25/%E3%80%8CFlexboxLayout%20%E5%B8%83%E5%B1%80%E3%80%8D%E8%AF%A6%E8%A7%A3/</url>
+      <content type="html"><![CDATA[<p>######「大部分内容翻译自<a href="https://www.w3.org/TR/css-flexbox-1/" target="_blank" rel="external">官方文档</a>」</p>
+<p>######摘要<br>这个规范描述了一个为用户界面设计所进行了优化的 CSS 框架模型。在这个弹性布局模型中，子元素可以以任何方向设置，子元素设置可以充满未用的布局空间或者缩小空间以避免溢出父控件的布局。可以轻松操作子元素的水平排列或竖直排列。嵌套布局(水平内部垂直，或者垂直内部水平)可以在两个维度上构建布局。</p>
+<blockquote>
+<p>The specification describes a CSS box model optimized for user interface design. In the flex layout model, the children of a flex container can be laid out in any direction, and can “flex” their sizes, either growing to fill unused space or shrinking to avoid overflowing the parent. Both horizontal and vertical alignment of the children can be easily manipulated. Nesting of these boxes (horizontal inside vertical, or vertical inside horizontal) can be used to build layouts in two dimensions.</p>
+</blockquote>
+<p>#####简单使用<br><figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div><div class="line">42</div><div class="line">43</div><div class="line">44</div><div class="line">45</div><div class="line">46</div><div class="line">47</div><div class="line">48</div><div class="line">49</div><div class="line">50</div><div class="line">51</div><div class="line">52</div><div class="line">53</div><div class="line">54</div><div class="line">55</div><div class="line">56</div><div class="line">57</div><div class="line">58</div><div class="line">59</div><div class="line">60</div><div class="line">61</div><div class="line">62</div><div class="line">63</div><div class="line">64</div><div class="line">65</div></pre></td><td class="code"><pre><div class="line">&lt;?xml version="1.0" encoding="utf-8"?&gt;</div><div class="line">&lt;com.google.android.flexbox.FlexboxLayout xmlns:android="http://schemas.android.com/apk/res/android"</div><div class="line">    xmlns:app="http://schemas.android.com/apk/res-auto"</div><div class="line">    xmlns:tools="http://schemas.android.com/tools"</div><div class="line">    android:layout_width="match_parent"</div><div class="line">    android:layout_height="match_parent"</div><div class="line">    android:padding="10dp"</div><div class="line">    app:alignContent="flex_start"</div><div class="line">    app:alignItems="stretch"</div><div class="line">    app:flexDirection="row"</div><div class="line">    app:flexWrap="wrap"</div><div class="line">    app:justifyContent="flex_start"</div><div class="line">    tools:context="com.badmask_zly.flexboxlayoutdemo.MainActivity"&gt;</div><div class="line"></div><div class="line">    &lt;TextView</div><div class="line">        android:layout_width="wrap_content"</div><div class="line">        android:layout_height="wrap_content"</div><div class="line">        android:layout_margin="5dp"</div><div class="line">        android:background="@drawable/bg_red"</div><div class="line">        android:padding="5dp"</div><div class="line">        android:text="Hello World!" /&gt;</div><div class="line"></div><div class="line">    &lt;TextView</div><div class="line">        android:layout_width="wrap_content"</div><div class="line">        android:layout_height="wrap_content"</div><div class="line">        android:layout_margin="5dp"</div><div class="line">        android:background="@drawable/bg_red"</div><div class="line">        android:padding="5dp"</div><div class="line">        android:text="Monday" /&gt;</div><div class="line"></div><div class="line">    &lt;TextView</div><div class="line">        android:layout_width="wrap_content"</div><div class="line">        android:layout_height="wrap_content"</div><div class="line">        android:layout_margin="5dp"</div><div class="line">        android:background="@drawable/bg_red"</div><div class="line">        android:padding="5dp"</div><div class="line">        android:text="Tuesday" /&gt;</div><div class="line"></div><div class="line"></div><div class="line">    &lt;TextView</div><div class="line">        android:layout_width="wrap_content"</div><div class="line">        android:layout_height="wrap_content"</div><div class="line">        android:layout_margin="5dp"</div><div class="line">        android:background="@drawable/bg_red"</div><div class="line">        android:padding="5dp"</div><div class="line">        android:text="Wednesday" /&gt;</div><div class="line"></div><div class="line">    &lt;TextView</div><div class="line">        android:layout_width="wrap_content"</div><div class="line">        android:layout_height="wrap_content"</div><div class="line">        android:layout_margin="5dp"</div><div class="line">        android:background="@drawable/bg_red"</div><div class="line">        android:padding="5dp"</div><div class="line">        android:text="Thursday" /&gt;</div><div class="line"></div><div class="line"></div><div class="line">    &lt;TextView</div><div class="line">        android:layout_width="wrap_content"</div><div class="line">        android:layout_height="wrap_content"</div><div class="line">        android:layout_margin="5dp"</div><div class="line">        android:background="@drawable/bg_red"</div><div class="line">        android:padding="5dp"</div><div class="line">        android:text="Friday" /&gt;</div><div class="line"></div><div class="line">&lt;/com.google.android.flexbox.FlexboxLayout&gt;</div></pre></td></tr></table></figure></p>
+<p>显示如下：</p>
+<p><img src="http://upload-images.jianshu.io/upload_images/2644950-e79ab57ab7b7b26f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/240" alt="简单使用.png"></p>
+<p>#####属性介绍 – 顺序和方向 ：</p>
+<p>######flexDirection : 决定子 item 在 FlexboxLayout 布局中的展示方向。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">属性值</th>
+<th style="text-align:left">value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">row</td>
+<td style="text-align:left">水平方向，从左到右，展示子 item</td>
+</tr>
+<tr>
+<td style="text-align:center">row-reverse</td>
+<td style="text-align:left">水平方向，从右到左，展示子 item</td>
+</tr>
+<tr>
+<td style="text-align:center">column</td>
+<td style="text-align:left">竖直方向，从上到下，展示子 item</td>
+</tr>
+<tr>
+<td style="text-align:center">column-reverse</td>
+<td style="text-align:left">竖直方向，从下到上，展示子 item</td>
+</tr>
+</tbody>
+</table>
+<p>######flexWrap : 决定 FlexboxLayout 布局中子 item 呈现一行还是多行，决定与 flexDirection 所决定方向的垂直方向的展示</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">属性值</th>
+<th style="text-align:left">value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">nowrap</td>
+<td style="text-align:left">不换行</td>
+</tr>
+<tr>
+<td style="text-align:center">wrap</td>
+<td style="text-align:left">flexDirection 取水平方向时，竖直方向为从上到下；flexDirection 取竖直方向时，水品方向为从左到右</td>
+</tr>
+<tr>
+<td style="text-align:center">wrap-reverse</td>
+<td style="text-align:left">flexDirection 取水平方向时，竖直方向为从下到上；flexDirection 取竖直方向时，水品方向为从右到左</td>
+</tr>
+</tbody>
+</table>
+<p>######app:layout_order :<br> FlexboxLayout 布局中子 item 可以设置这个属性。默认情况下，所有的 item 的 order 值都相同。值越小，越靠前。</p>
+<p>#####属性介绍 – 灵活性 ：</p>
+<p>######layout_flexGrow :<br>相当于 LinearLayout 布局中的 layout_weight 属性。</p>
+<p>######layout_flexShrink :<br>属性定义了项目的缩小比例，默认为1，即如果空间不足，该项目将缩小。<br>如果所有项目的 layout_flexShrink  属性都为1，当空间不足时，都将等比例缩小。如果一个项目的flex-shrink属性为0，其他项目都为1，则空间不足时，前者不缩小。负值对该属性无效。仅在单行时，此属性有效。</p>
+<p>######layout_flexBasisPercent :<br>值为一个百分比，表示设置子元素的长度为它父容器长度的百分比，如果设置了这个值，那么通过这个属性计算的值将会覆盖layout_width或者layout_height的值。注意：此属性在 FlexboxLayout 的宽度设置为 wrap_content 时，。默认值时-1。</p>
+<p>#####属性介绍 – 基准 ：</p>
+<p>######justifyContent :</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">属性值</th>
+<th style="text-align:left">value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">center</td>
+<td style="text-align:left">居中对齐</td>
+</tr>
+<tr>
+<td style="text-align:center">flex_start</td>
+<td style="text-align:left">flexDirection 为row ,子 item ，左对齐; flexDirection 为row_reverse ,子 item ，右对齐;flexDirection 为 column ,子 item ，上对齐;flexDirection 为 column_reverse ,子 item ，下对齐</td>
+</tr>
+<tr>
+<td style="text-align:center">flex_end</td>
+<td style="text-align:left">自行对比  flex_start 属性</td>
+</tr>
+<tr>
+<td style="text-align:center">space_around</td>
+<td style="text-align:left">每个元素到两侧的距离相等</td>
+</tr>
+<tr>
+<td style="text-align:center">space_between</td>
+<td style="text-align:left">两端对齐，中间间隔相同</td>
+</tr>
+</tbody>
+</table>
+<p>######alignItems ：属性控制元素在副轴方向的对齐方式，有以下5种取值：</p>
+]]></content>
+      
+        
+    </entry>
+    
+    <entry>
       <title><![CDATA[「adb shell dumpsys 命令用法」]]></title>
       <url>/2017/09/23/%E3%80%8Cadb%20shell%20dumpsys%E3%80%8D%E5%91%BD%E4%BB%A4%E7%94%A8%E6%B3%95/</url>
       <content type="html"><![CDATA[<h6 id="original-bad-mask-2017-09-23"><a href="#original-bad-mask-2017-09-23" class="headerlink" title="original bad-mask  2017-09-23"></a>original bad-mask  2017-09-23</h6><p>#####出发点一：<br>Android 引入了「任务栈」的概念，这个概念对于 Android 设备上的返回按键有极其重要的联系。有时候按下返回按钮或者点击关闭当前 Activity 的操作，都不知道 Android 系统会把程序带到哪个 Activity ，不确定这是否是最后一个 Activity 以致退出了整个程序。亦或者一些按钮和操作循环产生 Activity 而造成内存膨胀。对于这些问题，如果能够在调试期间知道当前任务栈的情况，就能很方便的观察和发现问题存在的原因，进而选择正确的 launchMode ，设置且当 Intent 的 Flag 来使程序达到预期的效果。</p>
